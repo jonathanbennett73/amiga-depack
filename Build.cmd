@@ -1,5 +1,3 @@
-@rem Command Line Options are -dontrun -dontbuild -debug
-
 @echo off
 @set _oldpath=%cd%
 cd /d %~dp0
@@ -16,10 +14,10 @@ echo.
 REM Assemble all sections and link together. Assemble entry point file first
 REM Assemble files that have large data/bss sections first.
 
-call BuildFunctions.cmd doassemble Framework\IntroLibrary.s IntroLibrary.o
+call BuildFunctions.cmd doassemble main.s main.o
 if errorlevel 1 goto failed
 
-call BuildFunctions.cmd doassemble main.s main.o
+call BuildFunctions.cmd doassemble Framework\IntroLibrary.s IntroLibrary.o
 if errorlevel 1 goto failed
 
 @rem Link
