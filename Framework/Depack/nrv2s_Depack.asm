@@ -1,6 +1,13 @@
 ; nrv2s decompression in pure 68k asm
 ; by ross
 ;
+; They are both in-place, but differ in the memory layout:
+; - forward in memory (nrv2s, standard) : slightly faster, but requires data to be loaded at the end of the buffer
+; - backward in memory (nrv2r, reverse), slightly slower, usually compresses a few bytes better and allows data to be loaded at the beginning of the buffer (therefore d0 can be set = 0).
+;
+; Call the command line help for the packer, it indicates the parameters to be used.
+; You will see that if you use the forward mode it give to you the value to be entered in d0 to load the file in the final part of the buffer.
+
 ; On entry:
 ;	a0	src packed data pointer
 ;	a1	dest pointer
@@ -80,7 +87,7 @@ nrv2s_unpack
 
 .decompr_select
 		addq.w	#3,d1
-		beq.b	.decompr_get_mlen		; last m_off
+		beq.b	.decompr_get_mlen			; last m_off
 		bpl.b	.decompr_exit_token
 		lsl.l	#8,d1
 		move.b	(a0)+,d1
@@ -100,7 +107,7 @@ nrv2s_unpack
 
 ._e_2		addx.w	d2,d2
 
-		lea		(a1,d3.l),a2
+		lea	(a1,d3.l),a2
 		addq.w	#2,d2
 		bgt.b 	.decompr_gamma_2  
 
@@ -114,7 +121,7 @@ nrv2s_unpack
 		dbra	d2,.L_copy1
 .L_rep		bra.b	.decompr_loop
 
-.decompr_gamma_2							; implicit d2 = 1
+.decompr_gamma_2						; implicit d2 = 1
 		add.b	d0,d0
 		bne.b	._g_2
 		move.b	(a0)+,d0
@@ -143,3 +150,4 @@ nrv2s_unpack
 		suba.l  d5,sp
 		movem.l	(sp)+,d0-d5/a0/a2-a4
 		rts
+		

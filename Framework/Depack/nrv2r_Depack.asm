@@ -1,6 +1,13 @@
 ; nrv2r decompression in 68000 assembly
 ; by ross
 ;
+; They are both in-place, but differ in the memory layout:
+; - forward in memory (nrv2s, standard) : slightly faster, but requires data to be loaded at the end of the buffer
+; - backward in memory (nrv2r, reverse), slightly slower, usually compresses a few bytes better and allows data to be loaded at the beginning of the buffer (therefore d0 can be set = 0).
+;
+; Call the command line help for the packer, it indicates the parameters to be used.
+; You will see that if you use the forward mode it give to you the value to be entered in d0 to load the file in the final part of the buffer.
+;
 ; On entry:
 ;	a0	src pointer
 ;	[a1	dest pointer]
@@ -30,11 +37,22 @@
 ;
 
 nrv2r_unpack
-		movem.l	d0-d5/a0/a2-a4,-(sp)
+		movem.l	d0-d5/a0-a4,-(sp)
 
-;		lea	(a0),a1						; if (a1) lea (a0),a4
+;Antiriad: I added this to allow for inplace vs src to dest easily.
+		cmp.l	a0,a1
+		beq.s	.inplace
+.srctodest:
+		lea	(a0),a4
+		adda.l	(a0),a0					; end of packed data
+		move.l	-(a0),(a4)
+		bra.s	.start
+.inplace:
+		move.l	(a0),d0
 		adda.l	(a0),a0					; end of packed data
 		move.l	-(a0),(a1)				; if (a1) move.l -(a0),(a4)
+.start:
+; -- End: Antiriad
 		adda.l	-(a0),a1				; end of buffer
 		
 		move.b	-(a0),d1				; ~stack usage
@@ -85,7 +103,7 @@ nrv2r_unpack
 
 .decompr_select
 		subq.w	#3,d1
-		bcs.b	.decompr_get_mlen		; last m_off
+		bcs.b	.decompr_get_mlen			; last m_off
 		bmi.b	.decompr_exit_token
 		lsl.l	#8,d1
 		move.b	-(a0),d1
@@ -105,7 +123,7 @@ nrv2r_unpack
 
 ._e_2		addx.w	d2,d2
 
-		lea		1(a1,d3.l),a2
+		lea	1(a1,d3.l),a2
 		addq.w	#2,d2
 		bgt.b 	.decompr_gamma_2  
 
@@ -119,7 +137,7 @@ nrv2r_unpack
 		dbra	d2,.L_copy1
 .L_rep		bra.b	.decompr_loop
 
-.decompr_gamma_2							; implicit d2 = 1
+.decompr_gamma_2						; implicit d2 = 1
 		add.b	d0,d0
 		bne.b	._g_2
 		move.b	-(a0),d0
